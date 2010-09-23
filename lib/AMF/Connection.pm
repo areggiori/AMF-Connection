@@ -419,6 +419,10 @@ Return the current HTTP::Cookies jar in use.
 
 Minimal support for AMF authentication. Password seems to be wanted in clear.
 
+=head1 CODE
+
+See http://github.com/areggiori/AMF-Connection
+
 =head1 SEE ALSO
 
  AMF::Connection::MessageBody

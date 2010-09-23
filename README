@@ -1,5 +1,5 @@
-AMF-Connection version 0.10
-===========================
+AMF-Connection
+==============
 
 A simple module to write AMF [1] clients to invoke remote services as used by Flex/AIR RIAs.
 

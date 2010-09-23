@@ -1,0 +1,13 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/00_load.t
+lib/AMF/Connection.pm
+lib/AMF/Connection/InputStream.pm
+lib/AMF/Connection/Message.pm
+lib/AMF/Connection/MessageBody.pm
+lib/AMF/Connection/MessageHeader.pm
+lib/AMF/Connection/OutputStream.pm
+examples/amfclient.pl
+examples/get-brightcove-videos-metadata.pl

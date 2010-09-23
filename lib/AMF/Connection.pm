@@ -355,11 +355,48 @@ AMF::Connection is meant to provide a simple AMF library to write client applica
 
 The module includes basic support for synchronous HTTP/S based RPC request-response access, where the client sends a request to the server to be processed and the server returns a response to the client containing the processing outcome. Data is sent back and forth in AMF binary format (AMFChannel). Other access patterns such as pub/sub and channels transport are out of scope of this inital release.
 
-AMF0 and AMF3 support is provided using the Storable::AMF module. While HTTP/S requestes to the AMF endpoint are carried out using the LWP::UserAgent module. The requests are sent using the HTTP POST method as AMF0 encoded data by default. AMF3 encoding can be set using the setEncoding() method. Simple AMF3 Externalized Object support is provided on returned objects from the server. Objects returned are simply left in bless( { ... }, 'something') form and they could be mapped to local to the client abstractions if needed. Dates are left encoded as AMF timestamps which represent the number of milliseconds since the epoch (if required DataTime could be used dividing by 1000 the input timestamp and set timezone accordingly). If encoding is set to AMF3 the Flex Messaging framework is used on returned responses content (I.e. objects casted to "flex.messaging.messages.AcknowledgeMessage" and "flex.messaging.messages.ErrorMessage" are returned).
+AMF0 and AMF3 support is provided using the Storable::AMF module. While HTTP/S requestes to the AMF endpoint are carried out using the LWP::UserAgent module. The requests are sent using the HTTP POST method as AMF0 encoded data by default. AMF3 encoding can be set using the setEncoding() method. Simple AMF3 Externalized Object support is provided on returned objects from the server. Objects returned are simply left in bless( { ... }, 'something') form and they could be mapped to local to the client abstractions if needed. 
+
+If encoding is set to AMF3 the Flex Messaging framework is used on returned responses content (I.e. objects casted to "flex.messaging.messages.AcknowledgeMessage" and "flex.messaging.messages.ErrorMessage" are returned).
 
 Simple batch requests and responses is provided also.
 
 See the sample usage synopsis above to start using the module.
+
+=head1 DATE TYPE SUPPORT
+
+The current 0.71 version of Storable::AMF does not support the AMF0/AFM3 Date type, and everything is being passed as string to the server (E.g. "2010-09-22T02:34:00"). Or as number (double) if in timestamp form. We will be seeking to submit a patch for Storable::AMF.
+
+This means, for example, that when you pass parameters to a call() you can not pass date parameters. And when results are returned dates are by default encoded as number (double) and most likely it is up to the client application to deparse the right object property/field value (E.g. convert "timestamp_something" => 1285253834000 to a proper DateTime object or something).
+
+For passing Date paramters to the server, if the server is a Java/Blazeds one the following hack works:
+
+ my $param1 = "foo"; # string
+ my $timestamp_something = 1285253834000; # serialized as number
+ my $dateParam = bless( {
+        year   => 2010,
+        month  => 9,
+        day    => 22,
+        hour   => 02,
+        minute => 34,
+        second => 00
+        }, 'java.util.Date' ); #assuming UTC timezone and server side can map 'java.util.Date' in - 'java.util.Calendar' should also work
+
+ my $params = [
+	$param1,
+	$timestamp_something,
+	$dateParam
+	];
+ 
+ $client->call( ..., $params );
+
+Where the timezone is assumed in UTC from server-sdie, and/or need to be converted beforehand.
+
+For other Java to ActionScript type mappings see http://livedocs.adobe.com/blazeds/1/javadoc/flex/messaging/io/amf/ActionMessageOutput.html#writeObject(java.lang.Object)
+
+For PHP gateways at the moment there is not a known/documented way to map client to server objects.
+
+If the AMF gateway is using any Perl glue the DataTime perl object might be mapped in.
 
 =head1 METHODS
 

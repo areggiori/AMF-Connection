@@ -365,23 +365,25 @@ See the sample usage synopsis above to start using the module.
 
 =head1 DATE TYPE SUPPORT
 
-The latest 0.79 version of Storable::AMF added basic date support with the new_date() and perl_data() utilitiy functions. This is just great. Internally AMF Date Type needs timestamps in milliseconds since the epoch in UTC ("neutral") timezone, and since Storable::AMF version 0.79 the module shields the user from that by automatically converting Date values to Perl double (number) scalar values.
+The latest 0.79 version of Storable::AMF added basic date support with the new_date() and perl_date() utilitiy functions. This is just great. Internally an AMF Date Type represents a timestamp in milliseconds since the epoch in UTC ("neutral") timezone, and since Storable::AMF version 0.79 the module shields the user from that by automatically converting Date values to Perl double (number) scalar values. Users which require AMF Date support should import the new_date() and perl_date() date manipulation functions into their code like:
 
-Since 0.20 version of AMF::Connection we introduced the AMF::Connection::Date class to let a user to creat dates and send them to an AMF server correctly as AMF Date Type. This means, for example, that when you can now pass proper AMF Date Type parameters to a call(). For the results workflow see the ISSUES below.
+ use Storable::AMF qw(new_date perl_date);
+
+and make sure any date passed to an AMF::Connection as parameter is encoded with new_date().
+
+=head2 OPEN ISSUES AND SHORTCOMINGS
+
+There is still an issue when arbitrary Date structures are returned from an AMF server to an AMF::Connection (E.g. as part of values of structured AMF Objects). In this case, the AMF::Connection does not try to reparse the Perl object structure returned by Storable::AMF (see thaw()), plus the Storable::AMF module thaw() function does simply deserialise AMF Date Type as number (double) of *milli* seconds since the epoch, and the perl_date() function must be called on each returned value instead. The Storable::AMF module author says that there were other issues in enoforcing a conversion (division by 1000) of the AMF server side (and controlled) timestamp values on each thaw() automatically; hopefully future releases of the module will address this problem.
+
+All this means that an AMF::Connection client application can not rely on those Date returned by the server as being Perl timestamps (seconds since the epoch) and will need explicitly call perl_date() or divide the timestamp by 1000 *explicitly*.
 
 =head2 USING OLD Storable::AMF VERSIONS
 
 In older versions (pre 0.79) of Storable::AMF there was no support for the AMF0/AFM3 Date Type, and everything was being passed as string to the server (E.g. "2010-09-22T02:34:00"). Or as double (number) if the date was in timestamp seconds since the epoch. This meant that an AMF::Connection in order to send a date (E.g. as parameter) had to multiply (or divide) by 1000 the timestamp (E.g. for $perl_timestamp=time(); my $amf_timestamp = $perl_timestamp*1000 vs. my $perl_timestamp = $amf_timestamp/1000), plus rely on the AMF server to cast timestamp AMF Numbers to Dates (I.e. which seems to work on most AMF servers in Java which cast Number to java.util.Date() or similar).
 
-=head2 ISSUES
-
-There is still an issue when arbitrary Date structures are returned from an AMF server to an AMF::Connection (E.g. as part of values of structured AMF Objects). In this case, the AMF::Connection does not try to reparse the Perl object structure returned by Storable::AMF (see thaw()) and simply serialise AMF Date Type as number (double) seconds since the epoch. This means that an AMF::Connection client application can not rely on those Date returned by the server as being instances of the AMF::Connection::Date class, but will be represented as normal Perl scalars representing a double (number) seconds since the epoch.
-
-Future versions of AMF::Connection will address this shortcoming.
-
 =head1 MAPPING OBJECTS
 
-By combining the power of Perl bless {}, $package_name syntax and the Storable::AMF freeze()/thaw() interface in used by AMF::Connection, it is possible to pass arbitrary structured AMF Objects the corresponding AMF server can interpret. This is possible due a simple Perl object reference to an hash is serialised to an AMF Object and can be mapped back on the server side. 
+By combining the power of Perl bless {}, $package_name syntax and the Storable::AMF freeze()/thaw() interface, it is possible to pass arbitrary structured AMF Objects the corresponding AMF server can interpret. This is possible due a simple Perl object reference to an hash is serialised to an AMF Object and can be mapped back on the server side. 
 
 This means that an AMF::Connection application can wrap all ActionScript / Flex AMF Objects around Perl Objects and get them sent; and returned into a Perl object BLOB using the power of Storable::AMF freeze()/thaw().A
 

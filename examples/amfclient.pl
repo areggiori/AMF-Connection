@@ -1,10 +1,48 @@
-#!/usr/bin/env perl -I ./lib -I ../lib
+#!/usr/bin/env perl
 
 # see http://swxformat.org/php/explorer/
 
 use AMF::Connection;
 use HTTP::Cookies;
-use Data::Dumper;
+
+use JSON;
+
+BEGIN
+  {
+    no strict 'refs';
+
+    # blessed hash object to JSON object
+    map
+      {
+        my $amf_class = $_;
+        my $foo = $amf_class."::TO_JSON";
+
+        # unbless object
+        *$foo = sub {
+            my $f = $_[0];
+
+            #process_amf_object ($f, $amf_class);
+
+            +{ %{$f} };
+          }
+      } (
+          # add your own remote service classes here - or use an SWFDecompiler
+
+          'flex.messaging.messages.AcknowledgeMessage'
+        );
+
+    # blessed hash object to JSON array
+    map
+      {
+        my $foo = $_."::TO_JSON";
+        # unbless
+        *$foo = sub {
+            $_[0]->{'externalizedData'};
+          }
+      } (
+          'flex.messaging.io.ArrayCollection'
+        );
+  }
 
 my $endpoint = 'http://swxformat.org/php/amf.php';
 my $service = 'Flickr';
@@ -20,9 +58,16 @@ $client->setHTTPCookieJar( HTTP::Cookies->new(file => "/tmp/lwpcookies.txt", aut
 my $params = [  "italy" ];
 my ($response) = $client->call( $service.'.'.$method, $params );
 
-if ( $response->is_success ) {
-        print Dumper( $response->getData );
-} else {
-        die "Can not send remote request for $service.$method method with params on $endpoint\n";
-        };
+my $json = JSON->new;
+$json->ascii(1);
+$json->utf8(1);
+$json->pretty(1);
+$json->allow_blessed(1);
+$json->convert_blessed(1);
+my $json_data = $json->encode( $response->getData );
 
+if ( $response->is_success ) {
+        print $json_data;
+} else {
+        die "Can not send remote request for $service.$method method with params on $endpoint using AMF".$client->getEncoding()." encoding:\n".$json_data."\n";
+        };

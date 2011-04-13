@@ -9,10 +9,21 @@ use Storable::AMF3;
 sub new {
 	my $proto = shift;
 	my $class = ref($proto) || $proto;
+
+ 	my ($storable_amf_options) = @_;
 	
 	my $self = {
 		'stream' => ''
 		};
+
+	if (defined $storable_amf_options)
+          {
+            if ($Storable::AMF::VERSION < 0.84)
+              {
+                croak "Storable::AMF 0.84 or newer needed to set stream options\n";
+              }
+            $self->{'options'} = Storable::AMF::parse_option ($storable_amf_options);
+          }
 
 	return bless($self, $class);
 	};
@@ -67,10 +78,26 @@ sub writeAMFData {
 
 	my $bytes;
         if($encoding == 3 ) {
-		$bytes = Storable::AMF3::freeze($data);
+		if ($Storable::AMF::VERSION < 0.84
+		    || not defined $class->{'options'})
+                  {
+		    $bytes = Storable::AMF3::freeze($data);
+		  }
+		else
+		  {
+		    $bytes = Storable::AMF3::freeze($data, $class->{'options'});
+		  }
 		$class->writeByte(0x11);
         } else {
-		$bytes = Storable::AMF0::freeze($data);
+		if ($Storable::AMF::VERSION < 0.84
+		    || not defined $class->{'options'})
+                  {
+		    $bytes = Storable::AMF0::freeze($data);
+		  }
+		else
+		  {
+		    $bytes = Storable::AMF0::freeze($data, $class->{'options'});
+		  }
                 };
 
 	croak "Can not write AMF".$encoding." data starting from position ".$class->{'cursor'}." of input - reason: ".$@ ."\n"
@@ -91,6 +118,7 @@ AMF::Connection::OutputStream - A simple pure perl implementation of an output b
   # ...
 
   my $stream = new AMF::Connection::OutputStream;
+  my $stream_with_options = new AMF::Connection::OutputStream('prefer_number, json_boolean');
   $stream->writeInt(1);
   $stream->writeLong(1);
 
@@ -101,9 +129,13 @@ AMF::Connection::OutputStream - A simple pure perl implementation of an output b
 
 The AMF::Connection::OutputStream class is a simple pure perl implementation of an output binary stream.
 
+=head1 OPTIONS
+
+See Storable::AMF0 documentation.
+
 =head1 SEE ALSO
 
-Data::AMF::IO, AMF::Perl::IO::OutputStream
+Storable::AMF0, Data::AMF::IO, AMF::Perl::IO::OutputStream
 
 =head1 AUTHOR
 
@@ -111,7 +143,7 @@ Alberto Attilio Reggiori, <areggiori at cpan dot org>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2010 by Alberto Attilio Reggiori
+Copyright (C) 2010-2011 by Alberto Attilio Reggiori
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,

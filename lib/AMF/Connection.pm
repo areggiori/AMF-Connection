@@ -13,7 +13,7 @@ use HTTP::Cookies;
 use Carp;
 use strict;
 
-our $VERSION = '0.11';
+our $VERSION = '0.20';
 
 our $HASMD5 = 0;
 {
@@ -58,6 +58,40 @@ sub new {
 
 # plus add paramters, referer, user agent, authentication/credentials ( see also SecureAMFChannel stuff ), 
 # plus timezone on retunred dates to pass to de-serializer - see AMF3 spec saying "it is suggested that time zone be queried independnetly as needed" - unelss local DateTime default to right locale!
+
+# we pass the string, and let Storable::AMF to parse the options into a scalar - see Input/OutputStream and Storable::AMF0 documentation
+
+sub setInputAMFOptions {
+	my ($class, $options) = @_;
+
+	$class->{'input_amf_options'} = $options;
+	};
+
+sub setOutputAMFOptions {
+	my ($class, $options) = @_;
+
+	$class->{'output_amf_options'} = $options;
+	};
+
+# useful when input and output options are the same
+sub setAMFOptions {
+	my ($class, $options) = @_;
+
+	$class->setInputAMFOptions ($options);
+	$class->setOutputAMFOptions ($options);
+	};
+
+sub getInputAMFOptions {
+	my ($class) = @_;
+
+	return $class->{'input_amf_options'};
+	};
+
+sub getOutputAMFOptions {
+	my ($class) = @_;
+
+	return $class->{'output_amf_options'};
+	};
 
 sub setEndpoint {
 	my ($class, $endpoint) = @_;
@@ -195,7 +229,7 @@ sub call {
 
 	$request->addBody( $body );
 
-	my $request_stream = new AMF::Connection::OutputStream();
+	my $request_stream = new AMF::Connection::OutputStream($class->{'output_amf_options'});
 
 	# serialize request
 	$request->serialize($request_stream);
@@ -214,7 +248,7 @@ sub call {
 	croak "HTTP POST error: ".$http_response->status_line."\n"
 		unless($http_response->is_success);
 
-	my $response_stream = new AMF::Connection::InputStream( $http_response->content );
+	my $response_stream = new AMF::Connection::InputStream( $http_response->content, $class->{'input_amf_options'});
 	my $response = new AMF::Connection::Message;
 	$response->deserialize( $response_stream );
 
@@ -469,6 +503,26 @@ Return the current HTTP::Cookies jar in use.
 
 Minimal support for AMF authentication. Password seems to be wanted in clear.
 
+=head2 setInputAMFOptions($options)
+
+Set input stream parsing options. See Storable::AMF0 for available options.
+
+=head2 setOutputAMFOptions($options)
+
+Set output stream serialization options. See Storable::AMF0 for available options.
+
+=head2 setAMFOptions($options)
+
+Set input and output options the same. See Storable::AMF0 for available options.
+
+=head2 getInputAMFOptions()
+
+Get input stream parsing options.
+
+=head2 getOutputAMFOptions()
+
+Get output stream serialization options.
+
 =head1 CODE
 
 See http://github.com/areggiori/AMF-Connection
@@ -476,7 +530,7 @@ See http://github.com/areggiori/AMF-Connection
 =head1 SEE ALSO
 
  AMF::Connection::MessageBody
- Storable::AMF, LWP::UserAgent
+ Storable::AMF, Storable::AMF0, LWP::UserAgent
 
  Flex messaging framework / LiveCycle Data Services
   http://livedocs.adobe.com/blazeds/1/javadoc/flex/messaging/io/amf/client/package-summary.html
@@ -497,9 +551,13 @@ See http://github.com/areggiori/AMF-Connection
 
 Alberto Attilio Reggiori, <areggiori at cpan dot org>
 
+=head1 THANKS
+
+Anatoliy Grishayev for prompt support and developments on Storable::AMF
+
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2010 by Alberto Attilio Reggiori
+Copyright (C) 2010-2011 by Alberto Attilio Reggiori
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,

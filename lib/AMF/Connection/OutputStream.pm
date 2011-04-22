@@ -3,8 +3,27 @@ package AMF::Connection::OutputStream;
 use strict;
 use Carp;
 
-use Storable::AMF0;
-use Storable::AMF3;
+our $storable_with_options;
+
+eval "use Storable::AMF0 0.84";
+if ($@)
+  {
+    $storable_with_options = 0;
+  }
+else
+  {
+    $storable_with_options = 1;
+  }
+
+eval "use Storable::AMF3 0.84";
+if ($@)
+  {
+    $storable_with_options = 0;
+  }
+else
+  {
+    $storable_with_options = 1;
+  }
 
 sub new {
 	my $proto = shift;
@@ -78,7 +97,7 @@ sub writeAMFData {
 
 	my $bytes;
         if($encoding == 3 ) {
-		if ($Storable::AMF::VERSION < 0.84
+		if ($storable_with_options  == 0
 		    || not defined $class->{'options'})
                   {
 		    $bytes = Storable::AMF3::freeze($data);
@@ -89,7 +108,7 @@ sub writeAMFData {
 		  }
 		$class->writeByte(0x11);
         } else {
-		if ($Storable::AMF::VERSION < 0.84
+		if ($storable_with_options  == 0
 		    || not defined $class->{'options'})
                   {
 		    $bytes = Storable::AMF0::freeze($data);

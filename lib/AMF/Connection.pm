@@ -13,7 +13,7 @@ use HTTP::Cookies;
 use Carp;
 use strict;
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 our $HASMD5 = 0;
 {

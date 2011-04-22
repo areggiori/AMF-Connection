@@ -7,3 +7,6 @@ Revision history for Perl extension AMF::Connection.
 	- updated AMF::Connection::OutputStream to report errors from Storable::AMF if any
 	- added Storable::AMF parse and serialization options with parse_option()
 
+0.21
+	- Fixed check on Storable version for parse_option()
+

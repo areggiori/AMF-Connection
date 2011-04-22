@@ -3,8 +3,27 @@ package AMF::Connection::InputStream;
 use strict;
 use Carp;
 
-use Storable::AMF0;
-use Storable::AMF3;
+our $storable_with_options;
+
+eval "use Storable::AMF0 0.84";
+if ($@)
+  {
+    $storable_with_options = 0;
+  }
+else
+  {
+    $storable_with_options = 1;
+  }
+
+eval "use Storable::AMF3 0.84";
+if ($@)
+  {
+    $storable_with_options = 0;
+  }
+else
+  {
+    $storable_with_options = 1;
+  }
 
 sub new {
 	my $proto = shift;
@@ -99,7 +118,7 @@ sub readAMFData {
 	if($type == 0x11) {
 		$encoding=3;
 		$class->{'cursor'}++;
-		if ($Storable::AMF::VERSION < 0.84
+		if ($storable_with_options  == 0
 		    || not defined $class->{'options'})
 		  {
         	    ($obj, $len) = Storable::AMF3::deparse_amf( substr($class->{'stream'},$class->{'cursor'}));
@@ -111,7 +130,7 @@ sub readAMFData {
 	} else {
 		# NOTE: Storable::AMF0 seems not needing extra readByte() before deparse
 
-		if ($Storable::AMF::VERSION < 0.84
+		if ($storable_with_options  == 0
 		    || not defined $class->{'options'})
 		  {
         	    ($obj, $len) = Storable::AMF0::deparse_amf( substr($class->{'stream'},$class->{'cursor'}));

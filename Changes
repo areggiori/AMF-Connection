@@ -10,3 +10,5 @@ Revision history for Perl extension AMF::Connection.
 0.21
 	- Fixed check on Storable version for parse_option()
 
+0.30	Wed May 11 18:07:11 BST 2011
+	- Added callBatch () to make AMF batch RPC possible

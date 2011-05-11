@@ -13,7 +13,7 @@ use HTTP::Cookies;
 use Carp;
 use strict;
 
-our $VERSION = '0.21';
+our $VERSION = '0.30';
 
 our $HASMD5 = 0;
 {
@@ -198,8 +198,17 @@ sub getHTTPCookieJar {
 	};
 
 # send "flex.messaging.messages.RemotingMessage"
+
 sub call {
-	my ($class, $command, $arguments ) = @_;
+	my ($class, $operation, $arguments ) = @_;
+
+	my @call = $class->callBatch ({ "operation" => $operation, "arguments" => $arguments });
+
+	return (wantarray) ? @call : $call[0];
+	};
+
+sub callBatch {
+	my ($class, @batch) = @_;
 
 	my $request = new AMF::Connection::Message;
 	$request->setEncoding( $class->{'encoding'} );
@@ -209,31 +218,42 @@ sub call {
 
 	# TODO - prepare HTTP/S request headers based on AMF headers received/set if any - and credentials
 
-	my $body = new AMF::Connection::MessageBody;
-	$class->{'response_counter'}++;
-	$body->setResponse( "/".$class->{'response_counter'} );
+	foreach my $call (@batch)
+          {
+	    next
+              unless (defined $call && ref ($call) =~ m/HASH/
+		      && defined $call->{'operation'} && defined $call->{'arguments'});
 
-	if( $class->{'encoding'} == 3 ) { # AMF3
+	    my $operation = $call->{'operation'};
+	    my $arguments = $call->{'arguments'};
+
+	    my $body = new AMF::Connection::MessageBody;
+	    $class->{'response_counter'}++;
+	    $body->setResponse( "/".$class->{'response_counter'} );
+
+	    if( $class->{'encoding'} == 3 ) { # AMF3
 		$body->setTarget( 'null' );
 
-		my (@command) = split('\.',$command);
-		my $method = pop @command;
-		my $service = join('.',@command);
+		my (@operation) = split('\.',$operation);
+		my $method = pop @operation;
+		my $service = join('.',@operation);
 		my $remoting_message = $class->_brew_flex_remoting_message( $service, $method, {}, $arguments );
 
 		$body->setData( [ $remoting_message ] ); # it seems we need array ref here - to be checked
-	} else {
-		$body->setTarget( $command );
+	    } else {
+		$body->setTarget( $operation );
 		$body->setData( $arguments );
 		};
 
-	$request->addBody( $body );
+	    $request->addBody( $body );
+          }
 
 	my $request_stream = new AMF::Connection::OutputStream($class->{'output_amf_options'});
 
 	# serialize request
 	$request->serialize($request_stream);
 
+	#use Data::Dumper;
 	#print STDERR Dumper( $request );
 
 	# set any extra HTTP header
@@ -257,22 +277,13 @@ sub call {
 	# process AMF response headers
 	$class->_process_response_headers( $response );
 
-	my @all;
-	map {
-		if( $_->getTarget() =~ m|^/$class->{'response_counter'}| ) { # TODO - match the first requested if in a batch
-			unshift @all, $_;
-		} else {
-			push @all, $_;
-			};
-	} @{ $response->getBodies() };
+	my @all = @{ $response->getBodies() };
 
 	# we make sure the main response is always returned first
 	return (wantarray) ? @all : $all[0];
 	};
 
 # TODO
-#
-# sub callBatch { }
 #
 # sub command { } - to send "flex.messaging.messages.CommandMessage" instead
 #
@@ -378,6 +389,7 @@ AMF::Connection - A simple library to write AMF clients.
         die "Can not send remote request for $service.$method method on $endpoint\n";
         };
 
+  my @response = $client->callBatch ( { "operation" => $service.$method", "arguments" => \@params }, ... );
 
 =head1 DESCRIPTION
 
@@ -447,79 +459,83 @@ Future versions of AMF::Connection may add a proper configurable factory for app
 
 =head1 METHODS
 
-=head2 new($endpoint)
+=head2 new ($endpoint)
 
 Create new AMF::Connection object. An endpoint can be specified as the only parameter. Or set in a second moment with the setEndpoint() method.
 
-=head2 call($opeation, $params)
+=head2 call ($operation, $arguments)
 
-Call the remote service method with given parameters/arguments on the set endpoint and return an AMF::Connection::MessageBody response. Or an array of responses if requsted (wantarray call scope). The $params is generally an array reference, but this version of the AMF::Connection code allows other object types too.
+Call the remote service method with given parameters/arguments on the set endpoint and return an AMF::Connection::MessageBody response. Or an array of responses if requsted (wantarray call scope). The $arguments is generally an array reference, but this version of the AMF::Connection code allows other object types too.
 
-=head2 setEndpoint($endpoint)
+=head2 callBatch (@batch)
+
+Call the remote service once in batch. Each element of @batch must be an hash like { "operation" => $operation, "arguments" => $arguments }, where $operation and $arguments are as specified in C<call>. The commands are called and responses returned in order as in @batch.
+
+=head2 setEndpoint ($endpoint)
 
 Set the AMF service endpoint.
 
-=head2 getEndpoint()
+=head2 getEndpoint ()
 
 Return the AMF service endpoint.
 
-=head2 setEncoding($encoding)
+=head2 setEncoding ($encoding)
 
 Set the AMF encoding to use.
 
-=head2 getEncoding()
+=head2 getEncoding ()
 
 Return the AMF encoding in use.
 
-=head2 setHTTPProxy($proxy)
+=head2 setHTTPProxy ($proxy)
 
 Set the HTTP/S proxy to use. If LWP::Protocol is installed SOCKS proxies are supported.
 
-=head2 getHTTPProxy()
+=head2 getHTTPProxy ()
 
 Return the HTTP/S procy in use if any.
 
-=head2 addHeader($header[, $value, $required])
+=head2 addHeader ($header[, $value, $required])
 
 Add an AMF AMF::Connection::MessageHeader to the requests. If $header is a string the header value $value and $required flag can be specified.
 
-=head2 addHTTPHeader($name, $value)
+=head2 addHTTPHeader ($name, $value)
 
 Add an HTTP header to sub-sequent HTTP requests.
 
-=head2 setUserAgent($ua)
+=head2 setUserAgent ($ua)
 
 Allow to specify an alternative LWP::UserAgent. The $ua must support the post() method, proxy() and cookie_jar() if necessary.
 
-=head2 setHTTPCookieJar($cookie_jar)
+=head2 setHTTPCookieJar ($cookie_jar)
 
 Allow to specify an alternative HTTP::Cookies jar. By default AMF::Connection keeps cookies into main-memory and the cookie jar is reset when a new connection is created. When a new cookies jar is set, any existing AMF::Connection cookie is copied over.
 
-=head2 getHTTPCookieJar()
+=head2 getHTTPCookieJar ()
 
 Return the current HTTP::Cookies jar in use.
 
-=head2 setCredentials($username,$password)
+=head2 setCredentials ($username,$password)
 
 Minimal support for AMF authentication. Password seems to be wanted in clear.
 
-=head2 setInputAMFOptions($options)
+=head2 setInputAMFOptions ($options)
 
 Set input stream parsing options. See Storable::AMF0 for available options.
 
-=head2 setOutputAMFOptions($options)
+=head2 setOutputAMFOptions ($options)
 
 Set output stream serialization options. See Storable::AMF0 for available options.
 
-=head2 setAMFOptions($options)
+=head2 setAMFOptions ($options)
 
 Set input and output options the same. See Storable::AMF0 for available options.
 
-=head2 getInputAMFOptions()
+=head2 getInputAMFOptions ()
 
 Get input stream parsing options.
 
-=head2 getOutputAMFOptions()
+=head2 getOutputAMFOptions ()
 
 Get output stream serialization options.
 

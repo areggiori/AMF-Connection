@@ -45,14 +45,14 @@ BEGIN
   }
 
 my $endpoint = 'http://swxformat.org/php/amf.php';
-my $service = 'Flickr';
-my $method = 'groupsSearch';
+my $service = 'Twitter';
+my $method = 'search';
 
 my $client = new AMF::Connection( $endpoint );
 
 $client->setEncoding(3);
 #$client->setHTTPProxy('http://127.0.0.1:8888');
-$client->addHeader( 'serviceBrowser', 'true' );
+#$client->addHeader( 'serviceBrowser', 'true' );
 $client->setHTTPCookieJar( HTTP::Cookies->new(file => "/tmp/lwpcookies.txt", autosave => 1, ignore_discard => 1 ) );
 
 my $params = [  "italy" ];

@@ -59,11 +59,11 @@ my $client = new AMF::Connection( $endpoint );
 #$client->setHTTPProxy('http://127.0.0.1:8888');
 #$client->setHTTPCookieJar( HTTP::Cookies->new(file => "/tmp/lwpcookies.txt", autosave => 1, ignore_discard => 1 ) );
 
-# eg taken from http://link.brightcove.com/services/player/bcpid46787848001?bctid=14695214001
+# eg taken from http://link.brightcove.com/services/player/bcpid34762914001?bctid=672454611001
 # works only with AMF0 encoding - at least it seems so - because using openamf ?
 #
-my $player_id = '46787848001';
-my $videoId = '14695214001';
+my $player_id = '34762914001';
+my $videoId = '672454611001';
 
 my $params = [
                                                        $player_id, # param 1 - playerId

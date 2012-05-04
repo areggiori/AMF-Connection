@@ -13,7 +13,7 @@ use HTTP::Cookies;
 use Carp;
 use strict;
 
-our $VERSION = '0.31';
+our $VERSION = '0.32';
 
 our $HASMD5 = 0;
 {
@@ -272,7 +272,7 @@ sub callBatch {
 	croak "HTTP POST error: ".$http_response->status_line."\n"
 		unless($http_response->is_success);
 
-	my $response_stream = new AMF::Connection::InputStream( $http_response->content, $class->{'input_amf_options'});
+	my $response_stream = new AMF::Connection::InputStream( $http_response->decoded_content, $class->{'input_amf_options'});
 	my $response = new AMF::Connection::Message;
 	$response->deserialize( $response_stream );
 

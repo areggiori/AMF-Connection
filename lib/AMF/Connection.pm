@@ -13,7 +13,7 @@ use HTTP::Cookies;
 use Carp;
 use strict;
 
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 
 our $HASMD5 = 0;
 {
@@ -200,9 +200,11 @@ sub getHTTPCookieJar {
 # send "flex.messaging.messages.RemotingMessage"
 
 sub call {
-	my ($class, $operation, $arguments ) = @_;
+	my ($class, $operation, $arguments, $destination) = @_;
 
-	my @call = $class->callBatch ({ "operation" => $operation, "arguments" => $arguments });
+	my @call = $class->callBatch ({ "operation" => $operation,
+					"arguments" => $arguments,
+					"destination" => $destination });
 
 	return (wantarray) ? @call : $call[0];
 	};
@@ -237,7 +239,9 @@ sub callBatch {
 		my (@operation) = split('\.',$operation);
 		my $method = pop @operation;
 		my $service = join('.',@operation);
-		my $remoting_message = $class->_brew_flex_remoting_message( $service, $method, {}, $arguments );
+		my $destination = (defined $call->{'destination'}) ? $call->{'destination'} : $service;
+
+		my $remoting_message = $class->_brew_flex_remoting_message( $service, $method, {}, $arguments, $destination);
 
 		$body->setData( [ $remoting_message ] ); # it seems we need array ref here - to be checked
 	    } else {
@@ -311,7 +315,7 @@ sub _process_response_headers {
 
 # just an hack to avoid rewrite class mapping local-to-remote and viceversa and make Storable::AMF happy
 sub _brew_flex_remoting_message {
-        my ($class,$destination,$operation,$headers,$body) = @_;
+	my ($class,$source,$operation,$headers,$body,$destination) = @_;
 
 	return bless( {
 		'clientId' => _generateID(),
@@ -323,7 +327,7 @@ sub _brew_flex_remoting_message {
                 'body' => $body,
                 'correlationId' => undef,
                 'operation' => $operation,
-                'source' => $destination # for backwards compatibility - google for it!
+		'source' => $source # for backwards compatibility - google for it!
                  }, 'flex.messaging.messages.RemotingMessage' );
         };
 
